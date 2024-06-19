@@ -124,13 +124,13 @@ const placeCharacter = (character) => {
         let possPo = positions[i];
         if(liveGameBoard[possPo.x][possPo.y] === 'x') {
             liveGameBoard[possPo.x][possPo.y] = 'o';
-            character.x = (possPo.x * 100) + 52;
-            character.y = (possPo.y * 100) + 52;
+            character.x = (possPo.x * 100) + 50;
+            character.y = (possPo.y * 100) + 50;
             return (possPo.x, possPo.y);
         }
     }
     gameOver = true;
-    alert(`YOU WON!!! Level Reach: ${level - 1} and Gems Collected: ${gemsCollected}`);
+    alert(`YOU WON!!! Level Reach: ${level} and Gems Collected: ${gemsCollected}`);
 };
 // ************ Create Game objects ************************************************************************************ //
 let scorpionObjects = [];
@@ -147,7 +147,7 @@ let adventurer = {
 const scorpionCounter = () => {
     scorpionObjects = [];
     scorpionPositions = [];
-    for(let i=0; i<=level; i++){
+    for(let i=0; i<level; i++){
         let scorpion = {
             speed: 100,
             x: 0,
@@ -189,6 +189,7 @@ const gemPoint = 1;
 // ************ Level Controlls ************************************************************************************ //
 const levelUp = () => {
     if(firstTime) {
+        level++
         firstTime = false;
         scorpionCounter();
         gemCounter(gemsPerLevel);
