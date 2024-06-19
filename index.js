@@ -90,12 +90,12 @@ const placeCharacter = (character) => {
 
     // Iterate over the shuffled positions until an available one is found
     for(let i = 0; i < positions.length; i++) {
-        let pos = positions[i];
-        if(liveGameBoard[pos.x][pos.y] === 'x') {
-            liveGameBoard[pos.x][pos.y] = 'o';
-            character.x = (pos.x * 100) + 52;
-            character.y = (pos.y * 100) + 52;
-            return (pos.x, pos.y);
+        let possPo = positions[i];
+        if(liveGameBoard[possPo.x][possPo.y] === 'x') {
+            liveGameBoard[possPo.x][possPo.y] = 'o';
+            character.x = (possPo.x * 100) + 52;
+            character.y = (possPo.y * 100) + 52;
+            return (possPo.x, possPo.y);
         }
     }
 
