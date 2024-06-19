@@ -4,16 +4,40 @@ canvas.width = 1000;
 canvas.height = 1000;
 document.body.appendChild(canvas);
 
-/*Game Premise: Try to survive as long as possible collecting as many gems and gaining levels as possible 
-(A player Wins if they reach a level where no more enemies or gems can fit on the game board).
-- Gameover if a scorpion catches you.
-- 
+const rows = 2;
+const cols = 8;
+const trackRight = 0;
+const trackLeft = 1;
+const trackUp = 1;
+const trackDown = 0;
+const spriteWidth = 650;
+const spriteHeight = 262; 
+const adventurerWidth = spriteWidth / cols; 
+const adventurerHeight = spriteHeight / rows; 
+let curXFrame = 0; 
+let frameCount = 8; 
+let srcX = 0; 
+let srcY = 0;
+let left = false;
+let right = false;
+let up = false;
+let down = false;
+let counter = 0;
+
+/*
+- Game Premise: Try to survive as long as possible collecting as many gems and gaining levels as possible 
+    (A player wins if they reach a level where no more enemies or gems can fit on the game board).
+- Gameover if a scorpion touches you.
+- Sound effect on gem collection, leveling, being touched by a scorpion, and for gameover.
+- Extenstion #1: Gems added (more per each level) collected by the player to increase their gem purse and level up.
+- Extenstion #2: Scorpions are game over if you touch them.
+- Extenstion #3: Animated sprite (Adventurer).
 */
 
 // ************ Game Images ************************************************************************************ //
 // Background image
 let bgReady = false;
-let bgImage = new Image();
+const bgImage = new Image();
 bgImage.onload = function () {
     bgReady = true;
 };
@@ -21,15 +45,15 @@ bgImage.src = "images/background.png";
 
 // Adventurer image
 let adventurerReady = false;
-let adventurerImage = new Image();
+const adventurerImage = new Image();
 adventurerImage.onload = function () {
     adventurerReady = true;
 };
-adventurerImage.src = "images/adventurer.png";
+adventurerImage.src = "images/adventurerSpriteSheet.png";
 
 // Scorpion image
 let scorpionReady = false;
-let scorpionImage = new Image();
+const scorpionImage = new Image();
 scorpionImage.onload = function () {
     scorpionReady = true;
 };
@@ -37,7 +61,7 @@ scorpionImage.src = "images/scorpion.png";
 
 // Gem image
 let gemReady = false;
-let gemImage = new Image();
+const gemImage = new Image();
 gemImage.onload = function () {
     gemReady = true;
 };
@@ -45,19 +69,39 @@ gemImage.src = "images/gem.png";
 
 // Border images
 let tbBorder = false;
-let tbBorderImage = new Image();
+const tbBorderImage = new Image();
 tbBorderImage.onload = function () {
     tbBorderReady = true
-}
+};
 tbBorderImage.src = "images/tbborder.png";
 let sBorder = false;
-let sBorderImage = new Image();
+const sBorderImage = new Image();
 sBorderImage.onload = function () {
     sBorderReady = true;
 };
 sBorderImage.src = "images/sborder.png";
 
-// ************ Play the Game ************************************************************************************ //
+// ************ Game Sounds ************************************************************************************ //
+let soundEfx = document.getElementById("soundEfx");
+
+const soundGameOver = "sounds/verloren-89595.mp3"
+const soundHit ="sounds/hit-swing-sword-small-2-95566.mp3"
+const soundGemCollected = "sounds/mixkit-quick-positive-video-game-notification-interface-265.wav"
+const soundNxtLvl = "sounds/mixkit-game-flute-bonus-2313.wav"
+
+const playEndAudio = (soundFile) => {
+    return new Promise(res=>{
+        soundEfx.src = soundFile;
+        soundEfx.play();
+        soundEfx.onended = res
+    });
+};
+
+async function run() {
+    await playEndAudio(soundHit)
+    await playEndAudio(soundGameOver)
+};
+// ************ Character Placement ************************************************************************************ //
 let gameBoard = [
     ['x','x','x','x','x','x','x','x','x'],
     ['x','x','x','x','x','x','x','x','x'],
@@ -73,7 +117,6 @@ let liveGameBoard = JSON.parse(JSON.stringify(gameBoard));
 
 
 const placeCharacter = (character) => {
-
     // Create an array of all positions
     let positions = [];
     for(let i = 0; i < 9; i++) {
@@ -81,13 +124,11 @@ const placeCharacter = (character) => {
             positions.push({x: i, y: j});
         }
     }
-
     // Shuffle the positions array
     for(let i = positions.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [positions[i], positions[j]] = [positions[j], positions[i]];
     }
-
     // Iterate over the shuffled positions until an available one is found
     for(let i = 0; i < positions.length; i++) {
         let possPo = positions[i];
@@ -98,12 +139,9 @@ const placeCharacter = (character) => {
             return (possPo.x, possPo.y);
         }
     }
-
     gameOver = true;
     alert(`YOU WON!!! Level Reach: ${level - 1} and Gems Collected: ${gemsCollected}`);
 };
-
-
 // ************ Create Game objects ************************************************************************************ //
 let scorpionObjects = [];
 let scorpionPositions = [];
@@ -111,7 +149,7 @@ let gemObjects = [];
 let gemPositions = [];
 
 let adventurer = {
-    speed: 256, 
+    speed: 200, 
     x: 0, 
     y: 0 
 };
@@ -148,8 +186,7 @@ const gemCounter = (gemsNxtLvl) => {
         let gemPosition = [gemPo.x, gemPo.y];
         gemPositions.push(gemPosition);
     };
-};
-    
+}; 
 // ************ Random Variables ************************************************************************************ //
 let gemsCollected = 0;
 let level = 0;
@@ -186,55 +223,90 @@ addEventListener("keyup", function (e) {
 }, false)
 
 // ************ Update game objects ************************************************************************************ //
-var update = function (modifier) {
-    if (38 in keysDown && adventurer.y > (50 + 1) ) { // holding up key
+const update = function (modifier) {
+    left = false;
+    right = false;
+    up = false;
+    down = false;
+
+    if (38 in keysDown && adventurer.y > (50 - 24) ) { 
         adventurer.y -= adventurer.speed * modifier;
+        up = true;
     }
-    if (40 in keysDown && adventurer.y < canvas.height - (50 + 101)) { // holding down key
+    if (40 in keysDown && adventurer.y < canvas.height - (50 + 106)) { 
         adventurer.y += adventurer.speed * modifier;
+        down = true;
     }
-    if (37 in keysDown && adventurer.x > (50 + 1)) { // holding left key
+    if (37 in keysDown && adventurer.x > (50 - 23)) { 
         adventurer.x -= adventurer.speed * modifier;
+        left = true;
     }
-    if (39 in keysDown && adventurer.x < canvas.width - (50 + 40)) { // holding right key
+    if (39 in keysDown && adventurer.x < canvas.width - (50 + 58)) { 
         adventurer.x += adventurer.speed * modifier;
+        right = true;
     }
     for(let i=0; i<scorpionObjects.length; i++){
         let scorpionChk = scorpionObjects[i];
         if (
             //allowing for overlap, mainly on the scorpion tail and some for hairbow.
-            adventurer.x <= (scorpionChk.x + 42) 
-            && scorpionChk.x <= (adventurer.x + 30)
-            && adventurer.y <= (scorpionChk.y + 49)
-            && scorpionChk.y <= (adventurer.y + 72)
+            adventurer.x <= (scorpionChk.x + 28) 
+            && scorpionChk.x <= (adventurer.x + 52)
+            && adventurer.y <= (scorpionChk.y + 30)
+            && scorpionChk.y <= (adventurer.y + 96)
         ) {
-            //sound effect for death
-            //soundEfx.play();
             gameOver = true;
-            alert(`GAME OVER! Level Reached: ${level} and Gems Purse: ${gemsCollected}`);
+            run().then(
+                ()=>{
+                    alert(`GAME OVER! Level Reached: ${level} and Gems Purse: ${gemsCollected}`);
+                }
+            );
         }
     }
     for(let i=0; i<gemObjects.length; i++){
         let gemChk = gemObjects[i];
         if (
-            //allowing for some overlap for hairbow, lower foot, and hand. 
-            //Player's position at 256 ends up over gem as they collect.
-            adventurer.x <= (gemChk.x + 15) 
-            && gemChk.x <= (adventurer.x + 33)
-            && adventurer.y <= (gemChk.y + 28)
-            && gemChk.y <= (adventurer.y + 88)
+            adventurer.x <= (gemChk.x - 8) 
+            && gemChk.x <= (adventurer.x + 58)
+            && adventurer.y <= (gemChk.y + 4)
+            && gemChk.y <= (adventurer.y + 114)
             && !gemChk.collected
         ) {
+            soundEfx.src = soundGemCollected;
+            soundEfx.play();
             gemChk.collected = true;
             gemsCollected += gemPoint;
 
         }
     }
     if(gemsCollected === gemsToNextLevel){
-        levelUp();
+        soundEfx.src = soundNxtLvl;
+        soundEfx.play();
+        levelUp()
+    }
+    if(counter === 5){
+        curXFrame = ++curXFrame % frameCount; 
+        counter = 0;
+    } else {
+        counter++;
+    }
+    srcX = curXFrame * adventurerWidth; 
+    if (left) {
+        srcY = trackLeft * adventurerHeight;
+    }
+    if (right) {
+        srcY = trackRight * adventurerHeight;
+    }
+    if (up) {
+        srcY = trackLeft * adventurerHeight;
+    }
+    if (down) {
+        srcY = trackRight * adventurerHeight;
+    }
+    if (left == false && right == false && up == false && down == false) {
+        srcX = 1 * adventurerWidth;
+        srcY = 1 * adventurerHeight;
     }
 };
-
 // ************ The main game loop ************************************************************************************ //
 const main = function () {
     if(gameOver == false){
@@ -252,12 +324,14 @@ const render = function () {
     };
     if(tbBorderImage && sBorderImage) {
         ctx.drawImage(tbBorderImage, 0, 0);
-        ctx.drawImage(tbBorderImage, 0, (1000-50));
+        ctx.drawImage(tbBorderImage, 0, (1000-40));
         ctx.drawImage(sBorderImage, 0, 0);
         ctx.drawImage(sBorderImage, (1000-50), 0);
     }
     if (adventurer) {
-        ctx.drawImage(adventurerImage, adventurer.x, adventurer.y);
+        console.log(srcX, srcY);
+        ctx.drawImage(adventurerImage, srcX, srcY, adventurerWidth, adventurerHeight, 
+            adventurer.x, adventurer.y, adventurerWidth, adventurerHeight);
     }
     if (scorpionReady) {
         for(let i=0; i<scorpionObjects.length; i++) {
@@ -281,7 +355,6 @@ const render = function () {
     ctx.fillText("Gem: " + gemsCollected, 50, 52);
     ctx.fillText("Level: " + level, 50, 72);
 };
-
 // ************ Reset Game ************************************************************************************ //
 const reset = function () {
     if(gameOver == false){
@@ -297,8 +370,7 @@ const reset = function () {
         };
     } 
 };
-
 // ************ Play the Game ************************************************************************************ //
-let then = Date.now();
-reset();
-main(); 
+    let then = Date.now();
+    reset();
+    main(); 
