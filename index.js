@@ -5,7 +5,7 @@ canvas.height = 1000;
 document.body.appendChild(canvas);
 
 /*Game Premise: Try to survive as long as possible collecting as many gems and gaining levels as possible 
-(no mention in requirements that a level must be achieved or a specific objective reached to win).
+(A player Wins if they reach a level where no more enemies or gems can fit on the game board).
 - Gameover if a scorpion catches you.
 - 
 */
@@ -69,25 +69,40 @@ let gameBoard = [
     ['x','x','x','x','x','x','x','x','x'],
     ['x','x','x','x','x','x','x','x','x'],
 ]; // 9x9
+let liveGameBoard = JSON.parse(JSON.stringify(gameBoard));
 
-const placeCharcter = (character) => {
-    let X=0;
-    let Y=0;
-    let success = false;
 
-    while(!success) {
-        X = Math.floor(Math.random() * 9);
-        Y = Math.floor(Math.random() * 9);
+const placeCharacter = (character) => {
 
-        if(gameBoard[X][Y] ==='x'){
-            success = true;
+    // Create an array of all positions
+    let positions = [];
+    for(let i = 0; i < 9; i++) {
+        for(let j = 0; j < 9; j++) {
+            positions.push({x: i, y: j});
         }
     }
-    gameBoard[X][Y] = 'o';
-    character.x = (X*100) + 52;
-    character.y = (Y*100) + 52;
-    return (X, Y);
-}
+
+    // Shuffle the positions array
+    for(let i = positions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [positions[i], positions[j]] = [positions[j], positions[i]];
+    }
+
+    // Iterate over the shuffled positions until an available one is found
+    for(let i = 0; i < positions.length; i++) {
+        let pos = positions[i];
+        if(liveGameBoard[pos.x][pos.y] === 'x') {
+            liveGameBoard[pos.x][pos.y] = 'o';
+            character.x = (pos.x * 100) + 52;
+            character.y = (pos.y * 100) + 52;
+            return (pos.x, pos.y);
+        }
+    }
+
+    gameOver = true;
+    alert(`YOU WON!!! Level Reach: ${level - 1} and Gems Collected: ${gemsCollected}`);
+};
+
 
 // ************ Create Game objects ************************************************************************************ //
 let scorpionObjects = [];
@@ -104,7 +119,7 @@ let adventurer = {
 const scorpionCounter = () => {
     scorpionObjects = [];
     scorpionPositions = [];
-    for(let i=0; i<=level + 1 ; i++){
+    for(let i=0; i<=level; i++){
         let scorpion = {
             speed: 100,
             x: 0,
@@ -112,7 +127,7 @@ const scorpionCounter = () => {
         };
         scorpionObjects.push(scorpion);
 
-        let scorpPo = placeCharcter(scorpion);
+        let scorpPo = placeCharacter(scorpion);
         let scorpionPosition = [scorpPo.x, scorpPo.y];
         scorpionPositions.push(scorpionPosition);
     };
@@ -129,7 +144,7 @@ const gemCounter = (gemsNxtLvl) => {
         };
         gemObjects.push(gem);
 
-        let gemPo = placeCharcter(gem);  
+        let gemPo = placeCharacter(gem);  
         let gemPosition = [gemPo.x, gemPo.y];
         gemPositions.push(gemPosition);
     };
@@ -152,6 +167,7 @@ const levelUp = () => {
         gemCounter(gemsPerLevel);
         gemsToNextLevel = gemsToNextLevel + 4;   
     } else if(!firstTime) {
+        liveGameBoard = JSON.parse(JSON.stringify(gameBoard)); //resetting gameboard to blank
         level++;
         gemsPerLevel = gemsPerLevel + 2;
         gemsToNextLevel = gemsToNextLevel + gemsPerLevel;
@@ -186,7 +202,7 @@ var update = function (modifier) {
     for(let i=0; i<scorpionObjects.length; i++){
         let scorpionChk = scorpionObjects[i];
         if (
-            //allowing for overlap, mainly on the scorpion tail
+            //allowing for overlap, mainly on the scorpion tail and some for hairbow.
             adventurer.x <= (scorpionChk.x + 42) 
             && scorpionChk.x <= (adventurer.x + 30)
             && adventurer.y <= (scorpionChk.y + 49)
@@ -211,15 +227,12 @@ var update = function (modifier) {
         ) {
             gemChk.collected = true;
             gemsCollected += gemPoint;
+
         }
     }
     if(gemsCollected === gemsToNextLevel){
         levelUp();
     }
-    // if(level === 10){
-    //     gameOver = true;
-    //     alert(`YOU WON!!! Gems Purse: ${gemsCollected}`);
-    // }
 };
 
 // ************ The main game loop ************************************************************************************ //
@@ -274,7 +287,7 @@ const reset = function () {
     if(gameOver == false){
         adventurer.x = (canvas.width / 2) - 49;
         adventurer.y = (canvas.height / 2) - 21.5;
-        placeCharcter(adventurer);
+        placeCharacter(adventurer);
 
         for(let i=0; i<scorpionPositions.length; i++) {
             scorpionPositions[i];
